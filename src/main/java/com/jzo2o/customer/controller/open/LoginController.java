@@ -29,12 +29,13 @@ public class LoginController {
     @ApiOperation("服务人员/机构人员登录接口")
     public LoginResDTO loginForWorker(@RequestBody LoginForWorkReqDTO loginForWorkReqDTO) {
 
+        //机构人员登录
         if(UserType.INSTITUTION == loginForWorkReqDTO.getUserType()){
             return loginService.loginForPassword(loginForWorkReqDTO);
         }else{
+            //服务人员登录
             return loginService.loginForVerify(loginForWorkReqDTO);
         }
-
     }
 
     /**

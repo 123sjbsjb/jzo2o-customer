@@ -28,4 +28,6 @@ public class WorkerCertificationController {
     public WorkerCertificationResDTO queryById(@PathVariable("id") Long id) {
         return BeanUtil.toBean(workerCertificationService.getById(id), WorkerCertificationResDTO.class);
     }
+
+
 }

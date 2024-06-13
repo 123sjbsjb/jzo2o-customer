@@ -32,4 +32,5 @@ public interface ILoginService {
      * @return token
      */
     LoginResDTO loginForCommonUser(LoginForCustomerReqDTO loginForCustomerReqDTO);
+
 }

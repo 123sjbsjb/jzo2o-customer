@@ -130,4 +130,5 @@ public class ILoginServiceImpl implements ILoginService {
         String token = jwtTool.createToken(commonUser.getId(), commonUser.getNickname(), commonUser.getAvatar(), UserType.C_USER);
         return new LoginResDTO(token);
     }
+
 }

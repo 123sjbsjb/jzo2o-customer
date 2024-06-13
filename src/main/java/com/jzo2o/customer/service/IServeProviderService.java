@@ -9,10 +9,7 @@ import com.jzo2o.customer.model.domain.ServeProvider;
 import com.jzo2o.customer.model.dto.request.InstitutionRegisterReqDTO;
 import com.jzo2o.customer.model.dto.request.InstitutionResetPasswordReqDTO;
 import com.jzo2o.customer.model.dto.request.ServeProviderPageQueryReqDTO;
-import com.jzo2o.customer.model.dto.response.CertificationStatusDTO;
-import com.jzo2o.customer.model.dto.response.ServeProviderBasicInformationResDTO;
-import com.jzo2o.customer.model.dto.response.ServeProviderInfoResDTO;
-import com.jzo2o.customer.model.dto.response.ServeProviderListResDTO;
+import com.jzo2o.customer.model.dto.response.*;
 
 import java.util.List;
 
@@ -121,4 +118,18 @@ public interface IServeProviderService extends IService<ServeProvider> {
      * @return
      */
     CertificationStatusDTO getCertificationStatus(Integer userType, Long providerId);
+
+    /**
+     * 机构人员注册
+     * @param institutionRegisterReqDTO
+     * @return
+     */
+    ServeProvider registerInstitution(InstitutionRegisterReqDTO institutionRegisterReqDTO);
+
+    /**
+     * 机构人员重置密码
+     * @param institutionResetPasswordReqDTO
+     * @return
+     */
+    ServeProvider resetPassword(InstitutionResetPasswordReqDTO institutionResetPasswordReqDTO);
 }

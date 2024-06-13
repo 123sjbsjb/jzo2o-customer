@@ -1,11 +1,6 @@
 package com.jzo2o.customer.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.ObjectUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jzo2o.api.customer.dto.response.AddressBookResDTO;
 import com.jzo2o.api.publics.MapApi;
@@ -13,15 +8,14 @@ import com.jzo2o.api.publics.dto.response.LocationResDTO;
 import com.jzo2o.common.model.PageResult;
 import com.jzo2o.common.utils.BeanUtils;
 import com.jzo2o.common.utils.CollUtils;
-import com.jzo2o.common.utils.NumberUtils;
-import com.jzo2o.common.utils.StringUtils;
 import com.jzo2o.customer.mapper.AddressBookMapper;
 import com.jzo2o.customer.model.domain.AddressBook;
 import com.jzo2o.customer.model.dto.request.AddressBookPageQueryReqDTO;
 import com.jzo2o.customer.model.dto.request.AddressBookUpsertReqDTO;
+import com.jzo2o.customer.model.dto.response.AddressResDto;
 import com.jzo2o.customer.service.IAddressBookService;
 import com.jzo2o.mvc.utils.UserContext;
-import com.jzo2o.mysql.utils.PageUtils;
+import com.jzo2o.mysql.utils.PageHelperUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +33,6 @@ import java.util.List;
  */
 @Service
 public class AddressBookServiceImpl extends ServiceImpl<AddressBookMapper, AddressBook> implements IAddressBookService {
-
     @Override
     public List<AddressBookResDTO> getByUserIdAndCity(Long userId, String city) {
 
@@ -51,5 +44,123 @@ public class AddressBookServiceImpl extends ServiceImpl<AddressBookMapper, Addre
             return new ArrayList<>();
         }
         return BeanUtils.copyToList(addressBooks, AddressBookResDTO.class);
+    }
+
+    /**
+     * 新增地址薄
+     * @param addressBookUpsertReqDTO
+     */
+    @Resource
+    private MapApi mapApi;
+    @Override
+    @Transactional
+    public void add(AddressBookUpsertReqDTO addressBookUpsertReqDTO) {
+        //0.设置经纬度
+        LocationResDTO locationByAddress = mapApi.getLocationByAddress(addressBookUpsertReqDTO.getAddress());
+        String location=locationByAddress.getLocation();
+        Double lon= Double.valueOf(location.split(",")[0]);
+        Double lat= Double.valueOf(location.split(",")[1]);
+        AddressBook addressBook= BeanUtil.toBean(addressBookUpsertReqDTO, AddressBook.class);
+        addressBook.setLon(lon);
+        addressBook.setLat(lat);
+        //1.获取当前用户id
+        Long userId = UserContext.currentUserId();
+        addressBook.setUserId(userId);
+        //2.默认地址处理
+        if(addressBook.getIsDefault().equals(1)) {
+            //2.1.查询当前用户的默认地址
+            AddressBook defaultAddress = lambdaQuery()
+                    .eq(AddressBook::getUserId, userId)
+                    .eq(AddressBook::getIsDefault, "1")
+                    .one();
+            //2.2.如果有默认地址，将其改为非默认
+            if(defaultAddress != null) {
+                defaultAddress.setIsDefault(0);
+                updateById(defaultAddress);
+            }
+        }
+        //3.新增地址
+        save(addressBook);
+    }
+
+    /**
+     * 分页查询地址薄
+     * @param addressBookPageQueryReqDTO
+     * @return
+     */
+    @Override
+    public PageResult<AddressResDto> pageAddress(AddressBookPageQueryReqDTO addressBookPageQueryReqDTO) {
+        return PageHelperUtils.selectPage(addressBookPageQueryReqDTO,
+                () -> baseMapper.queryAddressListByUserId(UserContext.currentUserId()));
+    }
+
+    /**
+     * 根据id更新地址薄
+     * @param id
+     * @param addressBookUpsertReqDTO
+     * @return
+     */
+    @Override
+    @Transactional
+    public AddressBook update(Long id, AddressBookUpsertReqDTO addressBookUpsertReqDTO) {
+        //0.设置经纬度
+        LocationResDTO locationByAddress = mapApi.getLocationByAddress(addressBookUpsertReqDTO.getAddress());
+        String location=locationByAddress.getLocation();
+        Double lon= Double.valueOf(location.split(",")[0]);
+        Double lat= Double.valueOf(location.split(",")[1]);
+        AddressBook addressBook= BeanUtil.toBean(addressBookUpsertReqDTO, AddressBook.class);
+        addressBook.setLon(lon);
+        addressBook.setLat(lat);
+        //2.判断是否修改默认地址
+        if(addressBook.getIsDefault().equals(1)) {
+            //2.1.查询当前用户的默认地址
+            AddressBook defaultAddress = lambdaQuery()
+                    .eq(AddressBook::getUserId, UserContext.currentUserId())
+                    .eq(AddressBook::getIsDefault, "1")
+                    .ne(AddressBook::getId, id)
+                    .one();
+            //2.2.如果有默认地址，将其改为非默认
+            if(defaultAddress != null) {
+                defaultAddress.setIsDefault(0);
+                updateById(defaultAddress);
+            }
+        }
+        //3.更新地址
+        addressBook.setId(id);
+        updateById(addressBook);
+        return addressBook;
+    }
+
+    @Override
+    @Transactional
+    public AddressBook setDefault(Long id, Integer flag) {
+        //1.查询当前用户的默认地址
+        AddressBook defaultAddress = lambdaQuery()
+                .eq(AddressBook::getUserId, UserContext.currentUserId())
+                .eq(AddressBook::getIsDefault, "1")
+                .ne(AddressBook::getId, id)
+                .one();
+        //2.如果有默认地址，将其改为非默认
+        if(defaultAddress != null) {
+            defaultAddress.setIsDefault(0);
+            updateById(defaultAddress);
+        }
+        //3.将当前地址改为默认
+        AddressBook addressBook = getById(id);
+        addressBook.setIsDefault(flag);
+        updateById(addressBook);
+        return addressBook;
+    }
+
+    @Override
+    public AddressBookResDTO getDefaultAddress() {
+        AddressBook addressBook = lambdaQuery()
+                .eq(AddressBook::getUserId, UserContext.currentUserId())
+                .eq(AddressBook::getIsDefault, "1")
+                .one();
+        if(addressBook == null) {
+            return null;
+        }
+        return BeanUtil.toBean(addressBook, AddressBookResDTO.class);
     }
 }
